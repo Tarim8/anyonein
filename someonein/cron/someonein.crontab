@@ -1,0 +1,1 @@
+*/5 * * * * wget -O - 'http://example.com/anyonein/?sensor=computer&show=none' >/dev/null 2>&1

@@ -20,14 +20,13 @@
 // set the following to allow GET to override cookies
 // php_value request_order "CPG"
 
+define( 'VERSION', '2.1' );
+
 define( 'MINUTES', 60 );
 define( 'HOURS', MINUTES * 60 );
 define( 'DAYS', HOURS * 24 );
 
-define( 'REFRESH_TIMEOUT', 2 * MINUTES );               // refresh page every 2 minutes
-define( 'COOKIE_TIMEOUT', 2 * REFRESH_TIMEOUT );        // cookie lasts twice as long
-define( 'MAX_LAST_SEEN', 29 * DAYS );                   // ignore if older than this
-
+define( 'SECONDS_NAME', ' seconds' );
 define( 'MINUTES_NAME', ' minutes' );
 define( 'HOURS_NAME', ' hours' );
 define( 'DAYS_NAME', ' days' );
@@ -59,6 +58,7 @@ define( 'UPDATE', 'update' );
 define( 'DISPLAY', 'display' );
 define( 'NONE', 'none' );
 
+// AUTH types
 define( 'IP', 'ip' );
 define( 'ID', 'id' );
 define( 'DOMAIN', 'domain' );
@@ -70,10 +70,16 @@ define( 'HTTP_FORBIDDEN', 403 );
 define( 'HTTP_NOT_FOUND', 404 );
 define( 'HTTP_INTERNAL_SERVER', 500 );
 
-define( 'OK_MESSAGE', 'ok' );
+// JSON tags
+define( 'STATUS', 'status' );
+define( 'OK_MESSAGE', 'message' );
 define( 'ERROR_MESSAGE', 'error' );
 define( 'ERROR_CODE', 'code' );
 
+define( 'SENSORS', 'sensors' );
+define( 'LAST_SEEN_NAME', 'lastseen' );
+define( 'MIN_LAST_SEEN_NAME', 'minlastseen' );
+define( 'MAX_LAST_SEEN_NAME', 'maxlastseen' );
 
 
 
@@ -85,12 +91,13 @@ include( 'local.php' );
 // define( 'LOCATION', 'Our Hackspace' );               // name of location
 // define( 'FILE_PREFIX', '/var/tmp/anyonein-' );       // last seen files
 // define( 'FILE_SUFFIX', '.time' );
+// define( 'MIN_LAST_SEEN', 2 * MINUTES );              // less than this is treated as now
+// define( 'MAX_LAST_SEEN', 28 * DAYS );                // ignore if older than this
+// define( 'REFRESH_TIMEOUT', MIN_LAST_SEEN );          // refresh browser page
 //
 // // Sensor names and last seen past/present descriptions
 // new Sensor( 'computer', 'A computer {was|is} in use {%D ago|now}' );
-// new Sensor( 'movement', 'Someone {|is} mov{ed|ing} {%D ago|now}' );
-// new Sensor( 'light', 'A light {was|is} on {%D ago|now}' );
-// new Sensor( 'test', 'Something {detected %D ago|is on now}' );
+// new Sensor( 'movement', 'Someone {moved %D ago|is moving}', 10 * MINUTES );
 //
 // // Authorisation to update a sensor
 // new Auth( 'ip', '203.0.113.0' );
@@ -106,10 +113,11 @@ include( 'local.php' );
 //
 class Page {
     public static $format = 'html';     // html, json
-    public static $bodyPrefix = '';     // prefix to $body
-    public static $body = '';           // build up HTML/JSON body here
-    public static $bodySuffix = '';     // suffix to $body
-    public static $separator = '';      // for subsequent items in a JSON list
+    public static $prefix = '';         // prefix text
+    public static $suffix = '';         // suffix text
+    public static $body = '';           // HTML body
+    public static $json = array();      // JSON object body
+    public static $status = array();    // JSON object status
 
 
     //
@@ -125,9 +133,6 @@ class Page {
             Page::$format = 'json';
             header( 'Content-Type: application/json' );
 
-            Page::$bodyPrefix = "{\n";
-            Page::$bodySuffix = "\n}\n";
-
             break;
 
         case 'jsonp':
@@ -135,8 +140,8 @@ class Page {
                 Page::$format = 'json';
                 header( 'Content-Type: text/javascript' );
 
-                Page::$bodyPrefix = "$_REQUEST[callback]( {\n";
-                Page::$bodySuffix = "\n} );\n";
+                Page::$prefix = "$_REQUEST[callback](\n";
+                Page::$suffix = "\n);\n";
 
                 break;
             }
@@ -146,7 +151,7 @@ class Page {
 
         case 'html':
         case null:
-            Page::$bodyPrefix = '
+            Page::$prefix = '
                 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
                 <html>
                   <head>
@@ -158,7 +163,7 @@ class Page {
                     <div class="body">
                 ';
 
-            Page::$bodySuffix = '
+            Page::$suffix = '
                     </div>
                   </body>
                 </html>
@@ -170,46 +175,47 @@ class Page {
 
 
     //
-    // addMsg - to page body
+    // addMsg - a line to all formats
     //
     static function addMsg( $line ) {
         Page::addHTML( $line );
-
-        Page::addJSON( OK_MESSAGE, "\"$line\"" );
+        Page::addJSONStatus( OK_MESSAGE, $line );
     }
 
 
     //
-    // addErr - to page body
+    // addErr - add an error code and error message
     //
     static function addErr( $line, $code ) {
         header( "HTTP/1.1 $code $line" );
 
         Page::addHTML( $line );
-
-        Page::addJSON( ERROR_CODE, $code );
-        Page::addJSON( ERROR_MESSAGE, "\"$line\"" );
+        Page::addJSONStatus( ERROR_CODE, $code );
+        Page::addJSONStatus( ERROR_MESSAGE, $line );
     }
 
 
     //
-    // addHTML - to page body
+    // addHTML - add a single line as a HTML paragraph
     //
     static function addHTML( $line ) {
-        if( Page::$format === 'html' ) {
-            Page::$body .= "<p class=\"message\">$line</p>\n";
-        }
+        Page::$body .= "<p class=\"message\">$line</p>\n";
     }
 
 
     //
-    // addJSON - to page body
+    // addJSON - add an item and its value to the JSON array
     //
     static function addJSON( $item, $value ) {
-        if( Page::$format === 'json' ) {
-            Page::$body .= Page::$separator . "\"$item\": $value";
-            Page::$separator = ",\n";
-        }
+        Page::$json += array( $item => $value );
+    }
+
+
+    //
+    // addJSONStatus - add an item and its value to the JSON status
+    //
+    static function addJSONStatus( $item, $value ) {
+        Page::$status += array( $item => $value );
     }
 
 
@@ -252,7 +258,20 @@ class Page {
     // output - the data
     //
     static function output() {
-        echo Page::$bodyPrefix, Page::$body, Page::$bodySuffix;
+        echo Page::$prefix;
+
+        if( Page::$format === 'json' ) {
+            echo json_encode( array(
+                STATUS => PAGE::$status,
+                SENSORS => PAGE::$json ),
+                JSON_FORCE_OBJECT + @JSON_PRETTY_PRINT
+            );
+
+        } else {
+            echo Page::$body;
+        }
+
+        echo Page::$suffix;
     }
 }
 
@@ -329,6 +348,7 @@ class Sensor {
     public $name;               // sensor name
     public $description;        // description text for reporting last seen time
     public $timeFile;           // the file to keep track of last seen time
+    public $minLastSeen;        // if younger than this last seen time - treat as now
     public $maxLastSeen;        // if older than this last seen time - ignore it
 
     public static $sensors;     // array of all sensors
@@ -339,9 +359,10 @@ class Sensor {
     // Add it to the static sensors list.
     // The first constructed sensor becomes the default sensor for ?show=update.
     //
-    function Sensor( $name, $description, $maxLastSeen = MAX_LAST_SEEN ) {
+    function Sensor( $name, $description, $minLastSeen = MIN_LAST_SEEN, $maxLastSeen = MAX_LAST_SEEN ) {
         $this->name = $name;
         $this->description = $description;
+        $this->minLastSeen = $minLastSeen;
         $this->maxLastSeen = $maxLastSeen;
         $this->timeFile = FILE_PREFIX . $name . FILE_SUFFIX;
 
@@ -425,25 +446,34 @@ class Sensor {
         }
 
         if( $browser ) {
-            setcookie( SHOW, $show, time() + COOKIE_TIMEOUT );
+            setcookie( SHOW, $show, time() + REFRESH_TIMEOUT * 2 );
             header( 'Refresh: ' . REFRESH_TIMEOUT );
         }
     }
 
 
     //
-    // show - a sensor's last seen time.
-    // Only show it in HTML if it's less than $maxLastSeen ago.
+    // show - a sensor's last seen time if it's less than $maxLastSeen ago.
     // Split up according to nearest 2*units (so we can always use plurals).
     //
     function show() {
         if( $result = @stat( $this->timeFile ) ) {
             $lastSeen = time() - $result['mtime'];
 
-            if( Page::$format === 'html' ) {
-                if( $lastSeen < $this->maxLastSeen ) {
-                    if( $lastSeen <= 2 * REFRESH_TIMEOUT ) {
+            if( $lastSeen < $this->maxLastSeen ) {
+                if( Page::$format === 'json' ) {
+                    Page::addJSON( $this->name, array(
+                        LAST_SEEN_NAME => $lastSeen,
+                        MIN_LAST_SEEN_NAME => $this->minLastSeen,
+                        MAX_LAST_SEEN_NAME => $this->maxLastSeen )
+                    );
+
+                } else {
+                    if( $lastSeen < $this->minLastSeen ) {
                         $this->describe();
+
+                    } elseif( $lastSeen < 2 * MINUTES ) {
+                        $this->describe( $lastSeen / SECONDS, SECONDS_NAME );
 
                     } elseif( $lastSeen < 2 * HOURS ) {
                         $this->describe( $lastSeen / MINUTES, MINUTES_NAME );
@@ -455,9 +485,6 @@ class Sensor {
                         $this->describe( $lastSeen / DAYS, DAYS_NAME );
                     }
                 }
-
-            } else {
-                Page::addJSON( $this->name, $lastSeen );
             }
         }
     }
