@@ -2,7 +2,7 @@
 
 // Anyonein - Let people know if someone is in a location
 //
-// Copyright Tarim 2016
+// Copyright Tarim 2016,2017
 //
 // Anyonein is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
@@ -20,7 +20,7 @@
 // set the following to allow GET to override cookies
 // php_value request_order "CPG"
 
-define( 'VERSION', '2.1' );
+define( 'VERSION', '2.2' );
 
 define( 'MINUTES', 60 );
 define( 'HOURS', MINUTES * 60 );
@@ -37,7 +37,7 @@ define( 'NO', 'no' );
 
 // Web page messages
 define( 'ANYONE_IN_MSG', 'Anyone in? - ' );
-define( 'LOCATION_QUERY_MSG', 'Are you in ' );
+define( 'LOCATION_QUERY_MSG', 'Are you at ' );
 
 define( 'UPDATED_MSG', 'Updated sensor ' );
 define( 'REMOVED_MSG', 'Removed sensor ' );
@@ -94,6 +94,7 @@ include( 'local.php' );
 // define( 'MIN_LAST_SEEN', 2 * MINUTES );              // less than this is treated as now
 // define( 'MAX_LAST_SEEN', 28 * DAYS );                // ignore if older than this
 // define( 'REFRESH_TIMEOUT', MIN_LAST_SEEN );          // refresh browser page
+// define( 'LOG_FILE', '/home/hackspace/logs/anyonein.log' );
 //
 // // Sensor names and last seen past/present descriptions
 // new Sensor( 'computer', 'A computer {was|is} in use {%D ago|now}' );
@@ -175,7 +176,7 @@ class Page {
 
 
     //
-    // addMsg - a line to all formats
+    // addMsg - add a line to all formats
     //
     static function addMsg( $line ) {
         Page::addHTML( $line );
@@ -196,7 +197,7 @@ class Page {
 
 
     //
-    // addHTML - add a single line as a HTML paragraph
+    // addHTML - add a single line as an HTML paragraph
     //
     static function addHTML( $line ) {
         Page::$body .= "<p class=\"message\">$line</p>\n";
@@ -359,12 +360,13 @@ class Sensor {
     // Add it to the static sensors list.
     // The first constructed sensor becomes the default sensor for ?show=update.
     //
-    function Sensor( $name, $description, $minLastSeen = MIN_LAST_SEEN, $maxLastSeen = MAX_LAST_SEEN ) {
+    function Sensor( $name, $description, $minLastSeen = MIN_LAST_SEEN, $maxLastSeen = MAX_LAST_SEEN, $logFile = LOG_FILE ) {
         $this->name = $name;
         $this->description = $description;
         $this->minLastSeen = $minLastSeen;
         $this->maxLastSeen = $maxLastSeen;
         $this->timeFile = FILE_PREFIX . $name . FILE_SUFFIX;
+        $this->logFile = $logFile;
 
         if( !isset( Sensor::$sensors ) ) {
             define( 'DEFAULT_SENSOR', $name );
@@ -399,6 +401,13 @@ class Sensor {
             } else {
                 touch( $this->timeFile );
                 Page::addMsg( UPDATED_MSG . $this->name );
+            }
+
+            if( $this->logFile ) {
+                file_put_contents( $this->logFile,
+                    date("c") . " $this->name" . ($delete ? " DELETE\n" : "\n"),
+                    FILE_APPEND | LOCK_EX
+                );
             }
 
         } else {

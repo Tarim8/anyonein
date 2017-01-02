@@ -1,13 +1,3 @@
-body {
-    text-align: center;
-    color: #444;
-    background-color: #eee;
-}
-
 form {
     display: inline;
-}
-
-input {
-    width: 6em;
 }

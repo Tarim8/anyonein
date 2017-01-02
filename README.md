@@ -144,6 +144,13 @@ reboots.  For most Linux system policies `/var/tmp` is suitable.
 command.  Any time more than MAX_LAST_SEEN will be ignored for reporting
 purposes.  REFRESH_TIMEOUT says how often the browser page will be refreshed.
 
+### Log File ###
+
+    define( 'LOG_FILE', '/home/hackspace/logs/anyonein.log' );
+
+  The default log file should be writable by the web server process.  May be
+defined as "false" for no logging.
+
 
 ### Sensor Definitions ###
 
@@ -151,12 +158,12 @@ purposes.  REFRESH_TIMEOUT says how often the browser page will be refreshed.
 following way.  The first one defined is the default sensor which is updated
 when a show=update parameter is set.
 
-    new Sensor( SENSOR, DESCRIPTION, MIN_LAST_SEEN, MAX_LAST_SEEN );
+    new Sensor( SENSOR, DESCRIPTION, MIN_LAST_SEEN, MAX_LAST_SEEN, LOG_FILE );
 
   `SENSOR` is the name of the sensor which is set by the `?sensor=SENSOR`
 parameter.
 
-  `DESCRIPTION` is a text description which  can contain strings of the form
+  `DESCRIPTION` is a text description which can contain strings of the form
 "{past tense|present tense}" which is displayed according to whether the sensor
 has been recently activated or longer than `MIN_LAST_SEEN` time ago.  It also
 contains strings of the form "%D" which are replaced by a phrase describing how
@@ -164,6 +171,8 @@ long ago the sensor was activated.
 
   `MAX_LAST_SEEN`, `MAX_LAST_SEEN` can be omitted and default to the above
 times.
+
+  `LOG_FILE` can be ommitted is the individual log file for the sensor.
 
 
 ### Example Sensor Definitions ###

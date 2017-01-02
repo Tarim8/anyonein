@@ -8,6 +8,7 @@ define( 'FILE_SUFFIX', '.time' );
 define( 'MIN_LAST_SEEN', 2 * MINUTES );                 // less than this is treated as now
 define( 'MAX_LAST_SEEN', 28 * DAYS );                   // ignore if older than this
 define( 'REFRESH_TIMEOUT', MIN_LAST_SEEN );             // refresh browser page
+define( 'LOG_FILE', '/home/hackspace/logs/anyonein.log' );
 
 // Sensor names and last seen past/present descriptions
 new Sensor( 'computer', 'A computer {was|is} in use {%D ago|now}' );
