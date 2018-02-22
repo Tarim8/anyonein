@@ -17,10 +17,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Anyonein.  If not, see <http://www.gnu.org/licenses/>.
 
-// set the following to allow GET to override cookies
-// php_value request_order "CPG"
-
-define( 'VERSION', '2.2' );
+define( 'VERSION', '2.3' );
 
 define( 'MINUTES', 60 );
 define( 'HOURS', MINUTES * 60 );
@@ -531,7 +528,7 @@ class Sensor {
     Sensor::setSensor( @$_REQUEST[SENSOR] );
 
     // Show data
-    Sensor::showAll( @$_REQUEST[SHOW] );
+    Sensor::showAll( array_key_exists( SHOW, $_COOKIE ) ? $_COOKIE[SHOW] : @$_REQUEST[SHOW] );
 
     // Display the results
     Page::output();
