@@ -2,7 +2,7 @@
 
 // Anyonein - Let people know if someone is in a location
 //
-// Copyright Tarim 2016,2017
+// Copyright Tarim 2016, 2017, 2019
 //
 // Anyonein is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
@@ -17,7 +17,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Anyonein.  If not, see <http://www.gnu.org/licenses/>.
 
-define( 'VERSION', '2.3' );
+define( 'VERSION', '2.4' );
 
 define( 'MINUTES', 60 );
 define( 'HOURS', MINUTES * 60 );
@@ -402,7 +402,7 @@ class Sensor {
 
             if( $this->logFile ) {
                 file_put_contents( $this->logFile,
-                    date("c") . " $this->name" . ($delete ? " DELETE\n" : "\n"),
+                    date('c ') . $_SERVER['REMOTE_ADDR'] . " $this->name " . ($delete ? " DELETE\n" : "\n"),
                     FILE_APPEND | LOCK_EX
                 );
             }
